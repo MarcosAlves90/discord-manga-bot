@@ -16,8 +16,5 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Criar pasta para logs e dados
 RUN mkdir -p /app/data /app/logs
 
-# Executar testes
-RUN python run_tests.py
-
 # Comando para iniciar o bot
 CMD ["python", "main.py"]
