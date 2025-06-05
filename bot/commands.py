@@ -132,7 +132,16 @@ class Commands:
             from utils.constants import calcular_criptogenes
             popularidade = manga.get("popularity", 0)
             score = manga.get("score", 0)
-            criptogenes = calcular_criptogenes(popularidade, score)
+            members = manga.get("members", 0)
+            favorites = manga.get("favorites", 0)
+            status = manga.get("status", "")
+            criptogenes = calcular_criptogenes(
+                popularidade=popularidade,
+                score=score, 
+                members=members,
+                favorites=favorites,
+                status=status
+            )
             
             embed = discord.Embed(
                 title=titulo, 
@@ -268,14 +277,22 @@ class Commands:
             name="📊 `/estatisticas`", 
             value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
             inline=False
-        )
+        )        
         embed.add_field(
-            name="🧬 Criptogenes:",
-            value="Cada mangá possui um valor em Criptogenes baseado na sua popularidade e pontuação.\n"
-                "- Mangás raros ou populares valem mais Criptogenes\n"
-                "- A pontuação do mangá também influencia no valor\n"
-                "- O valor varia entre 50 e 1000 Criptogenes",
-            inline=False        )
+            name="🧬 Sistema de Criptogenes Lendário:",
+            value="Cada mangá possui um valor baseado em múltiplos fatores:\n"
+                "- **Score**: Pontuação do manga (0-10)\n"
+                "- **Popularidade**: Ranking no MyAnimeList (quanto menor, melhor)\n" 
+                "- **Membros**: Quantos usuários adicionaram o manga\n"
+                "- **Favoritos**: Quantos usuários favoritaram\n"
+                "- **Status**: Se está sendo publicado, completo, etc.\n\n"
+                "💎 **Raridade Extrema**: Apenas mangás LEGENDÁRIOS se aproximam de 1000 Criptogenes\n"
+                "🏆 **Top 10**: ~800-950 Criptogenes\n"
+                "⭐ **Top 100**: ~400-700 Criptogenes\n"
+                "🎯 **Populares**: ~200-500 Criptogenes\n"
+                "📚 **Comuns**: ~50-200 Criptogenes",
+            inline=False
+        )
         
         embed.add_field(
             name="💡 Dicas:",

@@ -32,68 +32,91 @@ LIMITE_MANGA_RESET = 3600
 LIMITE_PEGAR_MANGA = 1
 LIMITE_PEGAR_RESET = 18000  # 5 horas
 
-def calcular_criptogenes(popularidade, score):
+def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=None, status=None, manga_data=None):
     """
-    Calcula o valor em Criptogenes baseado na popularidade e score do mangá
-    Sistema baseado em capitalização de mercado e avaliação fundamentalista
+    Sistema de Criptogenes "Lendário" - Extremamente difícil chegar a 1000
     
     Args:
-        popularidade: Ranking de popularidade do mangá (menor = mais popular)
-        score: Pontuação do mangá (0-10)
+        popularidade: Ranking de popularidade (menor = melhor)
+        score: Pontuação 0-10
+        members: Número de membros que adicionaram 
+        favorites: Número de favoritos
+        status: Status de publicação
+        manga_data: Dados completos do manga (opcional, usado se parâmetros individuais não fornecidos)
     
     Returns:
-        float: Valor em Criptogenes (entre 5-1000) com duas casas decimais
+        float: Valor em Criptogenes (1-1000, praticamente impossível chegar a 1000)
     """
     import math
     
-    # Base mínima para todos os mangás
-    valor_base = 5
+    # Se manga_data for fornecido, extrair parâmetros
+    if manga_data:
+        popularidade = manga_data.get('popularity') if popularidade is None else popularidade
+        score = manga_data.get('score') if score is None else score
+        members = manga_data.get('members') if members is None else members
+        favorites = manga_data.get('favorites') if favorites is None else favorites
+        status = manga_data.get('status') if status is None else status
     
-    # === CÁLCULO DA CAPITALIZAÇÃO (baseado na popularidade) ===
-    if popularidade <= 0 or popularidade > 100000:
-        # Mangás sem ranking ou muito baixos
-        cap_valor = 10
+    # === VALOR BASE DO SCORE (0-100 pontos) ===
+    if not score or score <= 0:
+        valor_base = 10  # Mangás sem score ficam muito baixos
     else:
-        # Fórmula exponencial inversa - quanto menor o ranking, maior o valor
-        # Top 10: ~800-900 pontos, Top 100: ~400-600, Top 1000: ~200-300, etc.
-        exponente = -math.log10(popularidade / 100000) * 2.5
-        cap_valor = min(900, 50 * math.pow(2, exponente))
+        valor_base = (score / 10.0) * 100
     
-    # === CÁLCULO DO SCORE FUNDAMENTALISTA ===
-    score_multiplicador = 1.0
-    if score and score > 0:
-        # Score vira multiplicador, não soma
-        # Score 9-10: 1.8-2.0x, Score 7-8: 1.3-1.6x, Score 5-6: 1.0-1.2x
-        if score >= 9.0:
-            score_multiplicador = 1.8 + (score - 9.0) * 0.2
-        elif score >= 8.0:
-            score_multiplicador = 1.6 + (score - 8.0) * 0.2
-        elif score >= 7.0:
-            score_multiplicador = 1.3 + (score - 7.0) * 0.3
-        elif score >= 6.0:
-            score_multiplicador = 1.1 + (score - 6.0) * 0.2
-        elif score >= 5.0:
-            score_multiplicador = 1.0 + (score - 5.0) * 0.1
+    # === MULTIPLICADOR DE POPULARIDADE (Sistema Lendário) ===
+    mult_popularidade = 1.0
+    if popularidade and popularidade > 0:
+        if popularidade <= 10:
+            mult_popularidade = 8.5  # Top 10 - Lendários
+        elif popularidade <= 50:
+            mult_popularidade = 6.0  # Top 50 - Épicos
+        elif popularidade <= 100:
+            mult_popularidade = 4.0  # Top 100 - Raros
+        elif popularidade <= 500:
+            mult_popularidade = 2.5  # Top 500 - Incomuns
+        elif popularidade <= 1000:
+            mult_popularidade = 1.8  # Top 1000 - Comuns+
+        elif popularidade <= 5000:
+            mult_popularidade = 1.3  # Top 5000 - Comuns
         else:
-            # Scores baixos penalizam
-            score_multiplicador = max(0.3, score / 5.0)
+            mult_popularidade = 1.0  # Resto - Básicos
     
-    # === VOLATILIDADE DE MERCADO (reduzida) ===
-    # Volatilidade menor para mangás mais valiosos (como Bitcoin vs altcoins)
-    if cap_valor > 500:
-        volatilidade = 0.02  # ±2% para "blue chips"
-    elif cap_valor > 200:
-        volatilidade = 0.05  # ±5% para mid caps
-    else:
-        volatilidade = 0.08  # ±8% para small caps
+    # === BÔNUS DE MEMBROS (Logarítmico) ===
+    bonus_membros = 0
+    if members and members > 0:
+        # Logarítmo para evitar valores explosivos
+        # Max teórico: ~45 pontos (para 1M+ membros)
+        bonus_membros = min(45, math.log10(max(1, members / 1000)) * 15)
+        bonus_membros = max(0, bonus_membros)
     
-    import random
-    flutuacao = random.uniform(1 - volatilidade, 1 + volatilidade)
+    # === BÔNUS DE FAVORITOS (Logarítmico) ===
+    bonus_favoritos = 0
+    if favorites and favorites > 0:
+        # Favoritos são mais raros, então valem mais
+        # Max teórico: ~50 pontos (para 100K+ favoritos)
+        bonus_favoritos = min(50, math.log10(max(1, favorites / 100)) * 20)
+        bonus_favoritos = max(0, bonus_favoritos)
     
-    # === CÁLCULO FINAL ===
-    valor_final = valor_base + (cap_valor * score_multiplicador * flutuacao)
+    # === MULTIPLICADOR DE STATUS ===
+    mult_status = 1.0
+    if status:
+        status_lower = status.lower()
+        if 'publishing' in status_lower or 'ongoing' in status_lower:
+            mult_status = 1.1  # Mangás em publicação têm leve bônus
+        elif 'finished' in status_lower or 'completed' in status_lower:
+            mult_status = 1.0  # Mangás completos são neutros
+        elif 'hiatus' in status_lower or 'discontinued' in status_lower:
+            mult_status = 0.8  # Mangás pausados/cancelados são penalizados
     
-    # Limitadores finais
-    valor_final = round(max(5, min(1000, valor_final)), 2)
+    # === CÁLCULO INTERMEDIÁRIO ===
+    valor_intermediario = (valor_base + bonus_membros + bonus_favoritos) * mult_popularidade * mult_status
     
-    return valor_final
+    # === CURVA LOGARÍTMICA FINAL - O SEGREDO DO SISTEMA LENDÁRIO ===
+    # Esta fórmula garante que é EXTREMAMENTE difícil chegar perto de 1000
+    # Mesmo valores intermediários altíssimos resultam em valores finais menores
+    valor_final = 1000 * (1 - math.exp(-valor_intermediario / 400))
+    
+    # Garantir limites absolutos
+    valor_final = max(1, min(999.99, valor_final))
+    
+    return round(valor_final, 2)

@@ -33,9 +33,7 @@ class MangaPaginationView(discord.ui.View):
                 from utils.constants import calcular_criptogenes
                 titulo = manga.get('title', 'Sem título')
                 url = manga.get('url', '')
-                popularidade = manga.get('popularity', 0)
-                score = manga.get('score', 0)
-                criptogenes = calcular_criptogenes(popularidade, score)
+                criptogenes = calcular_criptogenes(manga_data=manga)
                 
                 if url:
                     mangas_formatados.append(f"[{titulo}]({url}) - 🧬 **{criptogenes}** Criptogenes")
