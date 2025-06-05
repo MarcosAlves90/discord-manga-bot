@@ -36,9 +36,9 @@ class MangaPaginationView(discord.ui.View):
                 criptogenes = calcular_criptogenes(manga_data=manga)
                 
                 if url:
-                    mangas_formatados.append(f"[{titulo}]({url}) - 🧬 **{criptogenes}** Criptogenes")
+                    mangas_formatados.append(f"[{titulo}]({url}) - <a:gold_stud:1380069369580748840> **{criptogenes}** Pecinhas")
                 else:
-                    mangas_formatados.append(f"{titulo} - 🧬 **{criptogenes}** Criptogenes")
+                    mangas_formatados.append(f"{titulo} - <a:gold_stud:1380069369580748840> **{criptogenes}** Pecinhas")
             else:
                 mangas_formatados.append(f"{manga}")
         

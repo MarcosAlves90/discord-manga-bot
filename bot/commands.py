@@ -139,13 +139,12 @@ class Commands:
                 popularidade=popularidade,
                 score=score, 
                 members=members,
-                favorites=favorites,
-                status=status
+                favorites=favorites,                status=status
             )
             
             embed = discord.Embed(
                 title=titulo, 
-                description=f"{sinopse}\n\n🧬 **Criptogenes:** {criptogenes}",
+                description=f"{sinopse}\n\n<a:gold_stud:1380069369580748840> **Pecinhas:** {criptogenes}",
                 color=discord.Color.green()
             )
             if url_manga:
@@ -274,23 +273,22 @@ class Commands:
         )
         
         embed.add_field(
-            name="📊 `/estatisticas`", 
-            value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
+            name="📊 `/estatisticas`",            value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
             inline=False
         )        
         embed.add_field(
-            name="🧬 Sistema de Criptogenes Lendário:",
+            name="<a:gold_stud:1380069369580748840> Sistema de Pecinhas Lendário:",
             value="Cada mangá possui um valor baseado em múltiplos fatores:\n"
                 "- **Score**: Pontuação do manga (0-10)\n"
                 "- **Popularidade**: Ranking no MyAnimeList (quanto menor, melhor)\n" 
                 "- **Membros**: Quantos usuários adicionaram o manga\n"
                 "- **Favoritos**: Quantos usuários favoritaram\n"
                 "- **Status**: Se está sendo publicado, completo, etc.\n\n"
-                "💎 **Raridade Extrema**: Apenas mangás LEGENDÁRIOS se aproximam de 1000 Criptogenes\n"
-                "🏆 **Top 10**: ~800-950 Criptogenes\n"
-                "⭐ **Top 100**: ~400-700 Criptogenes\n"
-                "🎯 **Populares**: ~200-500 Criptogenes\n"
-                "📚 **Comuns**: ~50-200 Criptogenes",
+                "💎 **Raridade Extrema**: Apenas mangás LEGENDÁRIOS se aproximam de 1000 Pecinhas\n"
+                "🏆 **Top 10**: ~800-950 Pecinhas\n"
+                "⭐ **Top 100**: ~400-700 Pecinhas\n"
+                "🎯 **Populares**: ~200-500 Pecinhas\n"
+                "📚 **Comuns**: ~50-200 Pecinhas",
             inline=False
         )
         
@@ -301,7 +299,7 @@ class Commands:
                 "- Para pegar mangás há um limite separado (1 a cada 5 horas).\n"
                 "- Você pode pegar mangás que outros usuários rolaram, mesmo se atingiu seu limite de rolagem.\n"
                 "- As reações precisam ser feitas rapidamente antes do mangá expirar.\n"
-                "- Tente coletar mangás com alto valor de Criptogenes!",
+                "- Tente coletar mangás com alto valor de Pecinhas!",
             inline=False
         )
         

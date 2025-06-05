@@ -34,7 +34,7 @@ LIMITE_PEGAR_RESET = 18000  # 5 horas
 
 def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=None, status=None, manga_data=None):
     """
-    Sistema de Criptogenes "Lendário" - Extremamente difícil chegar a 1000
+    Sistema de Pecinhas "Lendário" - Extremamente difícil chegar a 1000
     
     Args:
         popularidade: Ranking de popularidade (menor = melhor)
@@ -43,9 +43,8 @@ def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=
         favorites: Número de favoritos
         status: Status de publicação
         manga_data: Dados completos do manga (opcional, usado se parâmetros individuais não fornecidos)
-    
     Returns:
-        float: Valor em Criptogenes (1-1000, praticamente impossível chegar a 1000)
+        float: Valor em Pecinhas (1-1000, praticamente impossível chegar a 1000)
     """
     import math
     
