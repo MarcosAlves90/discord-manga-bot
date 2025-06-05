@@ -6,3 +6,4 @@ build
 __pycache__
 tests
 run_tests.py
+.replit
