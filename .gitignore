@@ -2,3 +2,7 @@
 dist
 build
 *.spec
+*.db
+__pycache__
+tests
+run_tests.py

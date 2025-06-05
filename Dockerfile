@@ -1,15 +1,23 @@
 FROM python:3.11-slim
 
-RUN apt-get update && \
-    apt-get install -y ffmpeg && \
-    rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
+# Copiar apenas o arquivo requirements.txt primeiro para aproveitar o cache de camadas
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar o restante do código
 COPY . .
 
-RUN pip install --no-cache-dir discord.py python-dotenv gtts pynacl
-
+# Configuração de ambiente
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-CMD ["python", "bot.py"]
+# Criar pasta para logs e dados
+RUN mkdir -p /app/data /app/logs
+
+# Executar testes
+RUN python run_tests.py
+
+# Comando para iniciar o bot
+CMD ["python", "main.py"]
