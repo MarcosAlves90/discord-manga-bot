@@ -37,6 +37,7 @@ class DiscordBot(discord.Client):
         self.tree = app_commands.CommandTree(self)
         
         self.commands = Commands(self)
+        self._keep_alive_server = None  # Referência para o servidor keep-alive
     
     async def setup_hook(self):
         """Configuração inicial ao iniciar o bot"""

@@ -12,6 +12,7 @@ O bot oferece os seguintes comandos:
 - `/ranking` - Veja o ranking de quem pegou mais mangás no servidor
 - `/ajuda` - Exibe informações detalhadas sobre os comandos do bot
 - `/estatisticas` - Mostra estatísticas de uso do bot
+- `/status` - Exibe status do bot e sistema keep-alive
 
 ### Filtro de Conteúdo SFW
 
@@ -26,6 +27,7 @@ O bot implementa um sistema duplo de filtragem para garantir que apenas conteúd
 - **Limites de Taxa**: Evita abuso do bot com limites de mangás por período
 - **Banco de Dados Assíncrono**: Utiliza PostgreSQL com asyncpg para operações de banco de dados sem bloquear o bot
 - **Métricas de Desempenho**: Acompanha estatísticas de uso, tempo de resposta e erros
+- **Sistema Keep-Alive**: Mantém o bot online em serviços gratuitos como Render.com
 - **Testes Unitários**: Verificação automatizada de funcionalidades principais
 
 ## Requisitos
@@ -41,6 +43,20 @@ O bot implementa um sistema duplo de filtragem para garantir que apenas conteúd
   - typing_extensions (>=4.0.0)
 
 ## Instalação
+
+### Deploy no Render.com (Recomendado para hospedagem gratuita)
+
+O bot inclui um sistema keep-alive otimizado para funcionar no Render.com:
+
+1. Faça fork deste repositório no GitHub
+2. Crie uma conta no [Render.com](https://render.com)
+3. Crie um novo "Web Service" conectado ao seu repositório
+4. Configure as variáveis de ambiente:
+   - `DISCORD_TOKEN`: Seu token do bot Discord
+   - `DATABASE_URL`: Será fornecido automaticamente pelo Render
+5. O Render fará o deploy automaticamente
+
+Para instruções detalhadas, consulte [RENDER_SETUP.md](RENDER_SETUP.md).
 
 ### Usando Docker (Recomendado)
 
@@ -83,6 +99,21 @@ O bot responde aos seguintes comandos de barra (slash commands):
 - `/ranking` - Veja o ranking dos usuários com mais mangás
 - `/ajuda` - Mostra informações de ajuda detalhadas
 - `/estatisticas` - Exibe estatísticas de uso do bot
+- `/status` - Mostra status do bot e sistema keep-alive
+
+## Sistema Keep-Alive
+
+O bot inclui um sistema keep-alive integrado que:
+
+- **Cria um servidor HTTP interno** para receber requisições
+- **Faz auto-ping a cada 13 minutos** para evitar hibernação em serviços gratuitos
+- **Fornece endpoints de monitoramento**:
+  - `/` - Página principal com informações do bot
+  - `/ping` - Endpoint para keep-alive
+  - `/health` - Health check para monitoramento
+  - `/stats` - Estatísticas do bot em formato JSON
+
+Este sistema é especialmente útil para deployments no Render.com, Heroku e outros serviços que hibernam aplicações após períodos de inatividade.
 
 ## Testes
 

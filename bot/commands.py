@@ -54,6 +54,11 @@ class Commands:
         async def estatisticas(interaction: discord.Interaction):
             metrics.log_command("estatisticas", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
             await self._cmd_estatisticas(interaction)
+        
+        @self.client.tree.command(name="status", description="Exibe o status do bot e sistema keep-alive")
+        async def status(interaction: discord.Interaction):
+            metrics.log_command("status", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
+            await self._cmd_status(interaction)
     
     async def _cmd_manga_aleatorio(self, interaction: discord.Interaction):
         """Implementação do comando /rl"""
@@ -263,8 +268,7 @@ class Commands:
         embed.add_field(
             name="📑 `/meusmangas`", 
             value="Exibe uma lista paginada de todos os mangás que você já coletou, com links para suas páginas no MyAnimeList.",
-            inline=False
-        )
+            inline=False        )
         
         embed.add_field(
             name="🏆 `/ranking`", 
@@ -273,9 +277,17 @@ class Commands:
         )
         
         embed.add_field(
-            name="📊 `/estatisticas`",            value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
+            name="📊 `/estatisticas`",
+            value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
             inline=False
-        )        
+        )
+        
+        embed.add_field(
+            name="🤖 `/status`",
+            value="Mostra o status atual do bot, sistema keep-alive e informações técnicas.",
+            inline=False
+        )
+        
         embed.add_field(
             name="<a:gold_stud:1380069369580748840> Sistema de Pecinhas Lendário:",
             value="Cada mangá possui um valor baseado em múltiplos fatores:\n"
@@ -328,5 +340,75 @@ class Commands:
         
         embed.add_field(name="⚡ Tempo médio de resposta API", value=stats["avg_api_response_time"], inline=True)
         embed.add_field(name="💾 Taxa de acerto do cache", value=stats["cache_hit_rate"], inline=True)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    async def _cmd_status(self, interaction: discord.Interaction):
+        """Implementação do comando /status"""
+        import os
+        from datetime import datetime
+        
+        embed = discord.Embed(
+            title="🤖 Status do Bot",
+            description="Informações sobre o status atual do bot e sistema keep-alive:",
+            color=discord.Color.green()
+        )
+        
+        # Status básico do bot
+        latency = round(self.client.latency * 1000)
+        guild_count = len(self.client.guilds)
+        user_count = len(self.client.users)
+        
+        embed.add_field(name="🏓 Latência", value=f"{latency}ms", inline=True)
+        embed.add_field(name="🏠 Servidores", value=str(guild_count), inline=True)
+        embed.add_field(name="👥 Usuários", value=str(user_count), inline=True)
+        
+        # Informações do ambiente Render
+        render_url = os.environ.get('RENDER_EXTERNAL_URL', 'N/A')
+        port = os.environ.get('PORT', '8000')
+        
+        embed.add_field(name="🌐 URL do Render", value=render_url if render_url != 'N/A' else "Local", inline=False)
+        embed.add_field(name="🔌 Porta do Servidor", value=port, inline=True)
+        
+        # Status do keep-alive (se disponível)
+        if hasattr(self.client, '_keep_alive_server'):
+            server = self.client._keep_alive_server
+            if server:
+                embed.add_field(
+                    name="🔄 Keep-Alive", 
+                    value=f"✅ Ativo (Pings: {server.ping_count})", 
+                    inline=True
+                )
+            else:
+                embed.add_field(name="🔄 Keep-Alive", value="❌ Inativo", inline=True)
+        else:
+            embed.add_field(name="🔄 Keep-Alive", value="⚠️ Status desconhecido", inline=True)
+        
+        # Status das tasks em background
+        bg_tasks_status = []
+        if hasattr(self.client, 'bg_task') and self.client.bg_task:
+            bg_tasks_status.append("✅ Limpeza de mangás")
+        if hasattr(self.client, 'rl_cleanup_task') and self.client.rl_cleanup_task:
+            bg_tasks_status.append("✅ Limpeza de rate limit")
+        if hasattr(self.client, 'pegar_cleanup_task') and self.client.pegar_cleanup_task:
+            bg_tasks_status.append("✅ Limpeza de pegar mangás")
+        
+        if bg_tasks_status:
+            embed.add_field(
+                name="⚙️ Tasks em Background", 
+                value="\n".join(bg_tasks_status), 
+                inline=False
+            )
+        
+        # Mangás pendentes
+        pending_count = len(getattr(self.client, 'mangas_pendentes', {}))
+        embed.add_field(name="📚 Mangás Pendentes", value=str(pending_count), inline=True)
+        
+        # Links úteis
+        if render_url != 'N/A':
+            links = f"[Health Check]({render_url}/health) • [Stats JSON]({render_url}/stats)"
+            embed.add_field(name="🔗 Links", value=links, inline=False)
+        
+        embed.set_footer(text=f"Sistema iniciado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
