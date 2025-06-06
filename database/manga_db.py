@@ -22,6 +22,28 @@ class MangaDatabase:
                     timestamp TIMESTAMP NOT NULL
                 )
             ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS usuario_economia (
+                    usuario_id TEXT PRIMARY KEY,
+                    saldo DECIMAL(10,2) DEFAULT 0.00,
+                    total_ganho DECIMAL(10,2) DEFAULT 0.00,
+                    ultimo_daily TIMESTAMP DEFAULT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            await conn.execute('''
+                CREATE TABLE IF NOT EXISTS transacao_economia (
+                    id SERIAL PRIMARY KEY,
+                    usuario_id TEXT NOT NULL,
+                    tipo TEXT NOT NULL,
+                    valor DECIMAL(10,2) NOT NULL,
+                    descricao TEXT,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
         finally:
             await conn.close()
     
@@ -78,5 +100,132 @@ class MangaDatabase:
                 str(usuario_id), timestamp_limite
             )
             return result if result else 0
+        finally:
+            await conn.close()
+        
+    @staticmethod
+    async def obter_saldo_usuario(usuario_id):
+        """Obtém o saldo de pecinhas de um usuário"""
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            row = await conn.fetchrow(
+                "SELECT saldo, total_ganho, ultimo_daily FROM usuario_economia WHERE usuario_id = $1",
+                str(usuario_id)
+            )
+            if row:
+                return {
+                    'saldo': float(row['saldo']),
+                    'total_ganho': float(row['total_ganho']),
+                    'ultimo_daily': row['ultimo_daily']
+                }
+            else:
+                await conn.execute(
+                    "INSERT INTO usuario_economia (usuario_id) VALUES ($1) ON CONFLICT (usuario_id) DO NOTHING",
+                    str(usuario_id)
+                )
+                return {'saldo': 0.0, 'total_ganho': 0.0, 'ultimo_daily': None}
+        finally:
+            await conn.close()
+    
+    @staticmethod
+    async def adicionar_pecinhas(usuario_id, valor, descricao=""):
+        """Adiciona pecinhas ao saldo de um usuário"""
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            await conn.execute(
+                "INSERT INTO usuario_economia (usuario_id) VALUES ($1) ON CONFLICT (usuario_id) DO NOTHING",
+                str(usuario_id)
+            )
+            
+            await conn.execute("""
+                UPDATE usuario_economia 
+                SET saldo = saldo + $2, 
+                    total_ganho = total_ganho + $2,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE usuario_id = $1
+            """, str(usuario_id), valor)
+            
+            await conn.execute("""
+                INSERT INTO transacao_economia (usuario_id, tipo, valor, descricao)
+                VALUES ($1, 'ganho', $2, $3)
+            """, str(usuario_id), valor, descricao)
+            
+            novo_saldo = await conn.fetchval(
+                "SELECT saldo FROM usuario_economia WHERE usuario_id = $1",
+                str(usuario_id)
+            )
+            return float(novo_saldo)
+        finally:
+            await conn.close()
+    
+    @staticmethod
+    async def verificar_pode_daily(usuario_id):
+        """Verifica se o usuário pode usar o comando daily (cooldown de 24h)"""
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            row = await conn.fetchrow(
+                "SELECT ultimo_daily FROM usuario_economia WHERE usuario_id = $1",
+                str(usuario_id)
+            )
+            
+            if not row or not row['ultimo_daily']:
+                return True, None
+            
+            ultimo_daily = row['ultimo_daily']
+            agora = datetime.now()
+            tempo_restante = ultimo_daily + dt.timedelta(hours=24) - agora
+            
+            if tempo_restante.total_seconds() <= 0:
+                return True, None
+            else:
+                return False, tempo_restante
+        finally:
+            await conn.close()
+    
+    @staticmethod
+    async def registrar_daily(usuario_id, valor):
+        """Registra o daily de um usuário e adiciona as pecinhas"""
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            await conn.execute(
+                "INSERT INTO usuario_economia (usuario_id) VALUES ($1) ON CONFLICT (usuario_id) DO NOTHING",
+                str(usuario_id)
+            )
+            
+            await conn.execute("""
+                UPDATE usuario_economia 
+                SET ultimo_daily = CURRENT_TIMESTAMP,
+                    saldo = saldo + $2,
+                    total_ganho = total_ganho + $2,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE usuario_id = $1
+            """, str(usuario_id), valor)
+            
+            await conn.execute("""
+                INSERT INTO transacao_economia (usuario_id, tipo, valor, descricao)
+                VALUES ($1, 'daily', $2, 'Daily reward')
+            """, str(usuario_id), valor)
+            
+            novo_saldo = await conn.fetchval(
+                "SELECT saldo FROM usuario_economia WHERE usuario_id = $1",
+                str(usuario_id)
+            )
+            return float(novo_saldo)
+        finally:
+            await conn.close()
+    
+    @staticmethod
+    async def obter_ranking_economia():
+        """Retorna o ranking de usuários por quantidade de pecinhas"""
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            rows = await conn.fetch("""
+                SELECT usuario_id, saldo, total_ganho
+                FROM usuario_economia 
+                WHERE saldo > 0
+                ORDER BY saldo DESC 
+                LIMIT 10
+            """)
+            return [(row['usuario_id'], float(row['saldo']), float(row['total_ganho'])) for row in rows]
         finally:
             await conn.close()

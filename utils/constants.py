@@ -30,7 +30,30 @@ LIMITE_MANGA_POR_HORA = 10
 LIMITE_MANGA_RESET = 3600
 
 LIMITE_PEGAR_MANGA = 1
-LIMITE_PEGAR_RESET = 18000  # 5 horas
+LIMITE_PEGAR_RESET = 18000
+
+DAILY_MIN_VALUE = 50
+DAILY_MAX_VALUE = 300
+DAILY_COOLDOWN_HOURS = 24
+
+def gerar_valor_daily():
+    """
+    Gera um valor aleatório para o daily com distribuição que favorece 100 e 200
+    
+    Returns:
+        int: Valor entre 50 e 300, com maior probabilidade em torno de 100 e 200
+    """
+    import random
+    import numpy as np
+    
+    if random.random() < 0.5:
+        valor = np.random.normal(loc=100, scale=25)
+    else:
+        valor = np.random.normal(loc=200, scale=30)
+    
+    valor = max(DAILY_MIN_VALUE, min(DAILY_MAX_VALUE, valor))
+    
+    return int(round(valor))
 
 def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=None, status=None, manga_data=None):
     """
@@ -48,7 +71,6 @@ def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=
     """
     import math
     
-    # Se manga_data for fornecido, extrair parâmetros
     if manga_data:
         popularidade = manga_data.get('popularity') if popularidade is None else popularidade
         score = manga_data.get('score') if score is None else score
@@ -56,66 +78,52 @@ def calcular_criptogenes(popularidade=None, score=None, members=None, favorites=
         favorites = manga_data.get('favorites') if favorites is None else favorites
         status = manga_data.get('status') if status is None else status
     
-    # === VALOR BASE DO SCORE (0-100 pontos) ===
     if not score or score <= 0:
-        valor_base = 10  # Mangás sem score ficam muito baixos
+        valor_base = 10
     else:
         valor_base = (score / 10.0) * 100
     
-    # === MULTIPLICADOR DE POPULARIDADE (Sistema Lendário) ===
     mult_popularidade = 1.0
     if popularidade and popularidade > 0:
         if popularidade <= 10:
-            mult_popularidade = 8.5  # Top 10 - Lendários
+            mult_popularidade = 8.5
         elif popularidade <= 50:
-            mult_popularidade = 6.0  # Top 50 - Épicos
+            mult_popularidade = 6.0
         elif popularidade <= 100:
-            mult_popularidade = 4.0  # Top 100 - Raros
+            mult_popularidade = 4.0
         elif popularidade <= 500:
-            mult_popularidade = 2.5  # Top 500 - Incomuns
+            mult_popularidade = 2.5
         elif popularidade <= 1000:
-            mult_popularidade = 1.8  # Top 1000 - Comuns+
+            mult_popularidade = 1.8
         elif popularidade <= 5000:
-            mult_popularidade = 1.3  # Top 5000 - Comuns
+            mult_popularidade = 1.3
         else:
-            mult_popularidade = 1.0  # Resto - Básicos
+            mult_popularidade = 1.0
     
-    # === BÔNUS DE MEMBROS (Logarítmico) ===
     bonus_membros = 0
     if members and members > 0:
-        # Logarítmo para evitar valores explosivos
-        # Max teórico: ~45 pontos (para 1M+ membros)
         bonus_membros = min(45, math.log10(max(1, members / 1000)) * 15)
         bonus_membros = max(0, bonus_membros)
     
-    # === BÔNUS DE FAVORITOS (Logarítmico) ===
     bonus_favoritos = 0
     if favorites and favorites > 0:
-        # Favoritos são mais raros, então valem mais
-        # Max teórico: ~50 pontos (para 100K+ favoritos)
         bonus_favoritos = min(50, math.log10(max(1, favorites / 100)) * 20)
         bonus_favoritos = max(0, bonus_favoritos)
     
-    # === MULTIPLICADOR DE STATUS ===
     mult_status = 1.0
     if status:
         status_lower = status.lower()
         if 'publishing' in status_lower or 'ongoing' in status_lower:
-            mult_status = 1.1  # Mangás em publicação têm leve bônus
+            mult_status = 1.1
         elif 'finished' in status_lower or 'completed' in status_lower:
-            mult_status = 1.0  # Mangás completos são neutros
+            mult_status = 1.0
         elif 'hiatus' in status_lower or 'discontinued' in status_lower:
-            mult_status = 0.8  # Mangás pausados/cancelados são penalizados
+            mult_status = 0.8
     
-    # === CÁLCULO INTERMEDIÁRIO ===
     valor_intermediario = (valor_base + bonus_membros + bonus_favoritos) * mult_popularidade * mult_status
     
-    # === CURVA LOGARÍTMICA FINAL - O SEGREDO DO SISTEMA LENDÁRIO ===
-    # Esta fórmula garante que é EXTREMAMENTE difícil chegar perto de 1000
-    # Mesmo valores intermediários altíssimos resultam em valores finais menores
     valor_final = 1000 * (1 - math.exp(-valor_intermediario / 400))
     
-    # Garantir limites absolutos
     valor_final = max(1, min(999.99, valor_final))
     
     return round(valor_final, 2)

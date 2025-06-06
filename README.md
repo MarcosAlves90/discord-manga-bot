@@ -10,9 +10,22 @@ O bot oferece os seguintes comandos:
 - `/rl` - Recebe um mangá aleatório **SFW (Safe for Work)** que pode ser pego reagindo com qualquer emoji
 - `/meusmangas` - Vê a lista de mangás que você já pegou
 - `/ranking` - Veja o ranking de quem pegou mais mangás no servidor
+- `/daily` - Receba pecinhas diárias! Entre 50-300 pecinhas com cooldown de 24 horas
+- `/saldo` - Visualize seu saldo atual de pecinhas, total ganho e status do daily
+- `/rankingpecinhas` - Veja o ranking dos usuários com mais pecinhas acumuladas
 - `/ajuda` - Exibe informações detalhadas sobre os comandos do bot
 - `/estatisticas` - Mostra estatísticas de uso do bot
 - `/status` - Exibe status do bot e sistema keep-alive
+
+### Sistema de Economia
+
+O bot possui um sistema completo de economia baseado em "pecinhas":
+
+- **Pecinhas por Mangá**: Cada mangá coletado tem um valor calculado baseado em popularidade, score, membros e favoritos
+- **Daily Rewards**: Comando `/daily` que dá entre 50-300 pecinhas a cada 24 horas
+- **Sistema de Raridade**: Valores do daily categorizados como COMUM, RARO, ÉPICO e LENDÁRIO
+- **Rankings**: Acompanhe quem tem mais pecinhas no servidor
+- **Distribuição Inteligente**: Valores do daily concentrados em torno de 100 e 200 pecinhas
 
 ### Filtro de Conteúdo SFW
 
@@ -41,6 +54,7 @@ O bot implementa um sistema duplo de filtragem para garantir que apenas conteúd
   - aiohttp (>=3.8.0)
   - asyncpg (>=0.28.0)
   - typing_extensions (>=4.0.0)
+  - numpy (>=1.24.0)
 
 ## Instalação
 

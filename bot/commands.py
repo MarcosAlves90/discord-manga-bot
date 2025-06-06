@@ -44,6 +44,21 @@ class Commands:
         async def ranking_mangas(interaction: discord.Interaction):
             metrics.log_command("ranking", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
             await self._cmd_ranking(interaction)
+            
+        @self.client.tree.command(name="daily", description="Receba pecinhas diárias! (cooldown de 24h)")
+        async def daily(interaction: discord.Interaction):
+            metrics.log_command("daily", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
+            await self._cmd_daily(interaction)
+            
+        @self.client.tree.command(name="saldo", description="Veja seu saldo de pecinhas atual")
+        async def saldo(interaction: discord.Interaction):
+            metrics.log_command("saldo", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
+            await self._cmd_saldo(interaction)
+            
+        @self.client.tree.command(name="rankingpecinhas", description="Veja o ranking de pecinhas do servidor!")
+        async def ranking_pecinhas(interaction: discord.Interaction):
+            metrics.log_command("rankingpecinhas", user_id=interaction.user.id, guild_id=interaction.guild_id if interaction.guild else None)
+            await self._cmd_ranking_pecinhas(interaction)
                 
         @self.client.tree.command(name="ajuda", description="Exibe a ajuda detalhada sobre o bot e seus comandos")
         async def ajuda(interaction: discord.Interaction):
@@ -242,10 +257,104 @@ class Commands:
                     value=f"**{nome}** - {total} mangás",
                     inline=False
                 )
+                await interaction.followup.send(embed=embed)
+        except Exception as e:
+            logger.error(f"Erro ao buscar ranking: {e}")
+            await interaction.followup.send(f"Erro ao buscar o ranking: {e}")
+    
+    async def _cmd_saldo(self, interaction: discord.Interaction):
+        """Implementação do comando /saldo"""
+        await interaction.response.defer()
+        try:
+            user_id = interaction.user.id
+            dados_usuario = await self.client.db.obter_saldo_usuario(user_id)
+            
+            saldo = dados_usuario['saldo']
+            total_ganho = dados_usuario['total_ganho']
+            ultimo_daily = dados_usuario['ultimo_daily']
+            
+            embed = discord.Embed(
+                title=f"💳 Saldo de {interaction.user.display_name}",
+                color=discord.Color.gold()
+            )
+            
+            embed.add_field(
+                name="<a:gold_stud:1380069369580748840> Pecinhas Atuais",
+                value=f"**{saldo:,.2f}**",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📈 Total Ganho",
+                value=f"**{total_ganho:,.2f}**",
+                inline=True
+            )
+            
+            if ultimo_daily:
+                from datetime import datetime, timedelta
+                agora = datetime.now()
+                pode_daily = ultimo_daily + timedelta(hours=24) <= agora
+                
+                if pode_daily:
+                    daily_status = "✅ **Disponível!**"
+                else:
+                    tempo_restante = ultimo_daily + timedelta(hours=24) - agora
+                    horas = int(tempo_restante.total_seconds() // 3600)
+                    minutos = int((tempo_restante.total_seconds() % 3600) // 60)
+                    daily_status = f"⏰ **{horas}h {minutos}m**"
+            else:
+                daily_status = "✅ **Disponível!**"
+            
+            embed.add_field(
+                name="🎁 Daily",
+                value=daily_status,
+                inline=True
+            )
+            
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Erro no comando saldo: {e}")
+            await interaction.followup.send("Erro ao obter saldo. Tente novamente.", ephemeral=True)
+    
+    async def _cmd_ranking_pecinhas(self, interaction: discord.Interaction):
+        """Implementação do comando /rankingpecinhas"""
+        await interaction.response.defer()
+        try:
+            resultados = await self.client.db.obter_ranking_economia()
+            
+            if not resultados:
+                await interaction.followup.send("Ainda não há usuários no ranking de pecinhas!")
+                return
+            
+            embed = discord.Embed(
+                title="🏆 Ranking de Pecinhas",
+                description="Os usuários com mais pecinhas acumuladas!",
+                color=discord.Color.gold()
+            )
+            
+            medalhas = ["🥇", "🥈", "🥉"]
+            for i, (usuario_id, saldo, total_ganho) in enumerate(resultados):
+                try:
+                    usuario = await self.client.fetch_user(int(usuario_id))
+                    nome = usuario.display_name
+                except:
+                    nome = f"Usuário ID {usuario_id}"
+                
+                emoji = medalhas[i] if i < 3 else "🏅"
+                
+                embed.add_field(
+                    name=f"{emoji} {i+1}º Lugar",
+                    value=f"**{nome}**\n"
+                           f"💰 Saldo: {saldo:,.0f} <a:gold_stud:1380069369580748840>\n"
+                           f"📈 Total ganho: {total_ganho:,.0f} <a:gold_stud:1380069369580748840>",
+                    inline=False
+                )
             
             await interaction.followup.send(embed=embed)
         except Exception as e:
-            logger.error(f"Erro ao buscar ranking: {e}")
+            logger.error(f"Erro ao buscar ranking de pecinhas: {e}")
             await interaction.followup.send(f"Erro ao buscar o ranking: {e}")
     
     async def _cmd_ajuda(self, interaction: discord.Interaction):
@@ -285,6 +394,25 @@ class Commands:
         embed.add_field(
             name="🤖 `/status`",
             value="Mostra o status atual do bot, sistema keep-alive e informações técnicas.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💰 `/daily`",
+            value="Receba pecinhas diárias! Entre 50-300 pecinhas com cooldown de 24 horas.\n"
+                "Valores concentrados em torno de 100 e 200 pecinhas.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💳 `/saldo`",
+            value="Visualize seu saldo atual de pecinhas, total ganho e status do daily.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🏆 `/rankingpecinhas`",
+            value="Veja o ranking dos usuários com mais pecinhas acumuladas no servidor.",
             inline=False
         )
         
@@ -354,7 +482,6 @@ class Commands:
             color=discord.Color.green()
         )
         
-        # Status básico do bot
         latency = round(self.client.latency * 1000)
         guild_count = len(self.client.guilds)
         user_count = len(self.client.users)
@@ -363,14 +490,12 @@ class Commands:
         embed.add_field(name="🏠 Servidores", value=str(guild_count), inline=True)
         embed.add_field(name="👥 Usuários", value=str(user_count), inline=True)
         
-        # Informações do ambiente Render
         render_url = os.environ.get('RENDER_EXTERNAL_URL', 'N/A')
         port = os.environ.get('PORT', '8000')
         
         embed.add_field(name="🌐 URL do Render", value=render_url if render_url != 'N/A' else "Local", inline=False)
         embed.add_field(name="🔌 Porta do Servidor", value=port, inline=True)
         
-        # Status do keep-alive (se disponível)
         if hasattr(self.client, '_keep_alive_server'):
             server = self.client._keep_alive_server
             if server:
@@ -384,7 +509,6 @@ class Commands:
         else:
             embed.add_field(name="🔄 Keep-Alive", value="⚠️ Status desconhecido", inline=True)
         
-        # Status das tasks em background
         bg_tasks_status = []
         if hasattr(self.client, 'bg_task') and self.client.bg_task:
             bg_tasks_status.append("✅ Limpeza de mangás")
@@ -400,11 +524,9 @@ class Commands:
                 inline=False
             )
         
-        # Mangás pendentes
         pending_count = len(getattr(self.client, 'mangas_pendentes', {}))
         embed.add_field(name="📚 Mangás Pendentes", value=str(pending_count), inline=True)
         
-        # Links úteis
         if render_url != 'N/A':
             links = f"[Health Check]({render_url}/health) • [Stats JSON]({render_url}/stats)"
             embed.add_field(name="🔗 Links", value=links, inline=False)
@@ -412,3 +534,333 @@ class Commands:
         embed.set_footer(text=f"Sistema iniciado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
+        
+    async def _cmd_daily(self, interaction: discord.Interaction):
+        """Implementação do comando /daily"""
+        await interaction.response.defer()
+        try:
+            user_id = interaction.user.id
+            
+            pode_usar, tempo_restante = await self.client.db.verificar_pode_daily(user_id)
+            
+            if not pode_usar:
+                horas = int(tempo_restante.total_seconds() // 3600)
+                minutos = int((tempo_restante.total_seconds() % 3600) // 60)
+                
+                embed = discord.Embed(
+                    title="💰 Daily já coletado!",
+                    description=f"Você já coletou suas pecinhas hoje!\nVolte em **{horas} horas e {minutos} minutos**.",
+                    color=discord.Color.red()
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+                return
+            
+            from utils.constants import gerar_valor_daily
+            valor = gerar_valor_daily()
+            
+            novo_saldo = await self.client.db.registrar_daily(user_id, valor)
+            
+            if valor >= 250:
+                emoji = "💎"
+                raridade = "**LENDÁRIO**"
+            elif valor >= 200:
+                emoji = "🏆"
+                raridade = "**ÉPICO**"
+            elif valor >= 150:
+                emoji = "⭐"
+                raridade = "**RARO**"
+            elif valor >= 100:
+                emoji = "🔥"
+                raridade = "**COMUM+**"
+            else:
+                emoji = "💰"
+                raridade = "**COMUM**"
+            
+            embed = discord.Embed(
+                title=f"{emoji} Daily Coletado!",
+                description=f"Você recebeu **{valor}** <a:gold_stud:1380069369580748840> Pecinhas!\n"
+                           f"Raridade: {raridade}\n\n"
+                           f"💳 **Saldo atual:** {novo_saldo:,.2f} <a:gold_stud:1380069369580748840> Pecinhas",
+                color=discord.Color.gold()
+            )
+            
+            embed.set_footer(text="Volte em 24 horas para coletar novamente!")
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Erro no comando daily: {e}")
+            await interaction.followup.send("Erro ao processar o daily. Tente novamente.", ephemeral=True)
+    
+    async def _cmd_saldo(self, interaction: discord.Interaction):
+        """Implementação do comando /saldo"""
+        await interaction.response.defer()
+        try:
+            user_id = interaction.user.id
+            dados_usuario = await self.client.db.obter_saldo_usuario(user_id)
+            
+            saldo = dados_usuario['saldo']
+            total_ganho = dados_usuario['total_ganho']
+            ultimo_daily = dados_usuario['ultimo_daily']
+            
+            embed = discord.Embed(
+                title=f"💳 Saldo de {interaction.user.display_name}",
+                color=discord.Color.gold()
+            )
+            
+            embed.add_field(
+                name="<a:gold_stud:1380069369580748840> Pecinhas Atuais",
+                value=f"**{saldo:,.2f}**",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📈 Total Ganho",
+                value=f"**{total_ganho:,.2f}**",
+                inline=True
+            )
+            
+            if ultimo_daily:
+                from datetime import datetime, timedelta
+                agora = datetime.now()
+                pode_daily = ultimo_daily + timedelta(hours=24) <= agora
+                
+                if pode_daily:
+                    daily_status = "✅ **Disponível!**"
+                else:
+                    tempo_restante = ultimo_daily + timedelta(hours=24) - agora
+                    horas = int(tempo_restante.total_seconds() // 3600)
+                    minutos = int((tempo_restante.total_seconds() % 3600) // 60)
+                    daily_status = f"⏰ **{horas}h {minutos}m**"
+            else:
+                daily_status = "✅ **Disponível!**"
+            
+            embed.add_field(
+                name="🎁 Daily",
+                value=daily_status,
+                inline=True
+            )
+            
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logger.error(f"Erro no comando saldo: {e}")
+            await interaction.followup.send("Erro ao obter saldo. Tente novamente.", ephemeral=True)
+    
+    async def _cmd_ranking_pecinhas(self, interaction: discord.Interaction):
+        """Implementação do comando /rankingpecinhas"""
+        await interaction.response.defer()
+        try:
+            resultados = await self.client.db.obter_ranking_economia()
+            
+            if not resultados:
+                await interaction.followup.send("Ainda não há usuários no ranking de pecinhas!")
+                return
+            
+            embed = discord.Embed(
+                title="🏆 Ranking de Pecinhas",
+                description="Os usuários com mais pecinhas acumuladas!",
+                color=discord.Color.gold()
+            )
+            
+            medalhas = ["🥇", "🥈", "🥉"]
+            for i, (usuario_id, saldo, total_ganho) in enumerate(resultados):
+                try:
+                    usuario = await self.client.fetch_user(int(usuario_id))
+                    nome = usuario.display_name
+                except:
+                    nome = f"Usuário ID {usuario_id}"
+                
+                emoji = medalhas[i] if i < 3 else "🏅"
+                
+                embed.add_field(
+                    name=f"{emoji} {i+1}º Lugar",
+                    value=f"**{nome}**\n"
+                           f"💰 Saldo: {saldo:,.0f} <a:gold_stud:1380069369580748840>\n"
+                           f"📈 Total ganho: {total_ganho:,.0f} <a:gold_stud:1380069369580748840>",
+                    inline=False
+                )
+            
+            await interaction.followup.send(embed=embed)
+        except Exception as e:
+            logger.error(f"Erro ao buscar ranking de pecinhas: {e}")
+            await interaction.followup.send(f"Erro ao buscar o ranking: {e}")
+    
+    async def _cmd_ajuda(self, interaction: discord.Interaction):
+        """Implementação do comando /ajuda"""
+        embed = discord.Embed(
+            title="📚 Ajuda do Bot de Mangás",
+            description="Este bot permite descobrir e coletar mangás aleatórios! Abaixo estão os comandos disponíveis e como usá-los:",
+            color=discord.Color.blue()
+        )
+        
+        embed.add_field(
+            name="📖 `/rl`", 
+            value="Gera um mangá aleatório para você ou outros usuários.\n"
+                f"**Limite de rolagem:** {LIMITE_MANGA_POR_HORA} mangás por hora.\n"
+                f"**Limite para pegar:** {LIMITE_PEGAR_MANGA} mangá a cada {LIMITE_PEGAR_RESET//3600} horas.\n"
+                f"**Tempo de expiração:** {MANGA_EXPIRATION_TIME} segundos para reagir e coletar.", 
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📑 `/meusmangas`", 
+            value="Exibe uma lista paginada de todos os mangás que você já coletou, com links para suas páginas no MyAnimeList.",
+            inline=False        )
+        
+        embed.add_field(
+            name="🏆 `/ranking`", 
+            value="Mostra o ranking dos usuários que mais coletaram mangás únicos no servidor.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="📊 `/estatisticas`",
+            value="Exibe estatísticas sobre o uso do bot, como tempo online, mangás distribuídos, etc.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🤖 `/status`",
+            value="Mostra o status atual do bot, sistema keep-alive e informações técnicas.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💰 `/daily`",
+            value="Receba pecinhas diárias! Entre 50-300 pecinhas com cooldown de 24 horas.\n"
+                "Valores concentrados em torno de 100 e 200 pecinhas.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💳 `/saldo`",
+            value="Visualize seu saldo atual de pecinhas, total ganho e status do daily.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="🏆 `/rankingpecinhas`",
+            value="Veja o ranking dos usuários com mais pecinhas acumuladas no servidor.",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="<a:gold_stud:1380069369580748840> Sistema de Pecinhas Lendário:",
+            value="Cada mangá possui um valor baseado em múltiplos fatores:\n"
+                "- **Score**: Pontuação do manga (0-10)\n"
+                "- **Popularidade**: Ranking no MyAnimeList (quanto menor, melhor)\n" 
+                "- **Membros**: Quantos usuários adicionaram o manga\n"
+                "- **Favoritos**: Quantos usuários favoritaram\n"
+                "- **Status**: Se está sendo publicado, completo, etc.\n\n"
+                "💎 **Raridade Extrema**: Apenas mangás LEGENDÁRIOS se aproximam de 1000 Pecinhas\n"
+                "🏆 **Top 10**: ~800-950 Pecinhas\n"
+                "⭐ **Top 100**: ~400-700 Pecinhas\n"
+                "🎯 **Populares**: ~200-500 Pecinhas\n"
+                "📚 **Comuns**: ~50-200 Pecinhas",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="💡 Dicas:",
+            value="- Você pode clicar nos títulos dos mangás para ver sua página no MyAnimeList.\n"
+                "- Você pode rolar mangás até atingir o limite por hora.\n"
+                "- Para pegar mangás há um limite separado (1 a cada 5 horas).\n"
+                "- Você pode pegar mangás que outros usuários rolaram, mesmo se atingiu seu limite de rolagem.\n"
+                "- As reações precisam ser feitas rapidamente antes do mangá expirar.\n"
+                "- Tente coletar mangás com alto valor de Pecinhas!",
+            inline=False
+        )
+        
+        embed.set_footer(text="Bot criado com a API Jikan (MyAnimeList) | Dados de mangás fornecidos pelo MyAnimeList.net")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    async def _cmd_estatisticas(self, interaction: discord.Interaction):
+        """Implementação do comando /estatisticas"""
+        stats = metrics.get_stats_summary()
+        
+        embed = discord.Embed(
+            title="📊 Estatísticas do Bot",
+            description="Informações sobre o desempenho e uso do bot:",
+            color=discord.Color.gold()
+        )
+        
+        embed.add_field(name="⏱️ Tempo online", value=stats["uptime"], inline=True)
+        embed.add_field(name="🔢 Total de comandos", value=str(stats["total_commands"]), inline=True)
+        embed.add_field(name="🖥️ Servidores ativos", value=str(stats["active_guilds"]), inline=True)
+        
+        top_cmds = stats["top_commands"]
+        if top_cmds:
+            cmd_text = "\n".join([f"{cmd}: {count}" for cmd, count in top_cmds])
+            embed.add_field(name="📈 Comandos mais usados", value=cmd_text, inline=False)
+        
+        embed.add_field(name="⚡ Tempo médio de resposta API", value=stats["avg_api_response_time"], inline=True)
+        embed.add_field(name="💾 Taxa de acerto do cache", value=stats["cache_hit_rate"], inline=True)
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    
+    async def _cmd_status(self, interaction: discord.Interaction):
+        """Implementação do comando /status"""
+        import os
+        from datetime import datetime
+        
+        embed = discord.Embed(
+            title="🤖 Status do Bot",
+            description="Informações sobre o status atual do bot e sistema keep-alive:",
+            color=discord.Color.green()
+        )
+        
+        latency = round(self.client.latency * 1000)
+        guild_count = len(self.client.guilds)
+        user_count = len(self.client.users)
+        
+        embed.add_field(name="🏓 Latência", value=f"{latency}ms", inline=True)
+        embed.add_field(name="🏠 Servidores", value=str(guild_count), inline=True)
+        embed.add_field(name="👥 Usuários", value=str(user_count), inline=True)
+        
+        render_url = os.environ.get('RENDER_EXTERNAL_URL', 'N/A')
+        port = os.environ.get('PORT', '8000')
+        
+        embed.add_field(name="🌐 URL do Render", value=render_url if render_url != 'N/A' else "Local", inline=False)
+        embed.add_field(name="🔌 Porta do Servidor", value=port, inline=True)
+        
+        if hasattr(self.client, '_keep_alive_server'):
+            server = self.client._keep_alive_server
+            if server:
+                embed.add_field(
+                    name="🔄 Keep-Alive", 
+                    value=f"✅ Ativo (Pings: {server.ping_count})", 
+                    inline=True
+                )
+            else:
+                embed.add_field(name="🔄 Keep-Alive", value="❌ Inativo", inline=True)
+        else:
+            embed.add_field(name="🔄 Keep-Alive", value="⚠️ Status desconhecido", inline=True)
+        
+        bg_tasks_status = []
+        if hasattr(self.client, 'bg_task') and self.client.bg_task:
+            bg_tasks_status.append("✅ Limpeza de mangás")
+        if hasattr(self.client, 'rl_cleanup_task') and self.client.rl_cleanup_task:
+            bg_tasks_status.append("✅ Limpeza de rate limit")
+        if hasattr(self.client, 'pegar_cleanup_task') and self.client.pegar_cleanup_task:
+            bg_tasks_status.append("✅ Limpeza de pegar mangás")
+        
+        if bg_tasks_status:
+            embed.add_field(
+                name="⚙️ Tasks em Background", 
+                value="\n".join(bg_tasks_status), 
+                inline=False
+            )
+        
+        pending_count = len(getattr(self.client, 'mangas_pendentes', {}))
+        embed.add_field(name="📚 Mangás Pendentes", value=str(pending_count), inline=True)
+        
+        if render_url != 'N/A':
+            links = f"[Health Check]({render_url}/health) • [Stats JSON]({render_url}/stats)"
+            embed.add_field(name="🔗 Links", value=links, inline=False)
+        
+        embed.set_footer(text=f"Sistema iniciado: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+    

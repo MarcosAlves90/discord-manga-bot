@@ -33,11 +33,11 @@ class DiscordBot(discord.Client):
         
         self.mangas_pendentes = {} 
         self.rl_comandos_por_usuario = {}
-        self.pegar_comandos_por_usuario = {}  # Novo sistema para rastrear quando usuários pegam mangás
+        self.pegar_comandos_por_usuario = {}
         self.tree = app_commands.CommandTree(self)
         
         self.commands = Commands(self)
-        self._keep_alive_server = None  # Referência para o servidor keep-alive
+        self._keep_alive_server = None
     
     async def setup_hook(self):
         """Configuração inicial ao iniciar o bot"""
@@ -209,7 +209,6 @@ class DiscordBot(discord.Client):
                         pass
                     return
                     
-            # CORREÇÃO: Agora verificamos apenas o limite de PEGAR mangás, não o limite de RL
             pode_pegar, registros_pegar = self.verificar_limite_pegar(payload.user_id)
             
             if not pode_pegar:
@@ -234,7 +233,6 @@ class DiscordBot(discord.Client):
             try:
                 await self.db.registrar_manga(payload.user_id, manga_data["manga_id"])
                 
-                # CORREÇÃO: Agora registramos no sistema de PEGAR mangás, não no de RL
                 user_id_str = str(payload.user_id)
                 if user_id_str not in self.pegar_comandos_por_usuario:
                     self.pegar_comandos_por_usuario[user_id_str] = []
